@@ -77,8 +77,40 @@ export abstract class BasePermissionHandler {
             'permission',
             async (response) => {
                 const pending = this.pendingRequests.get(response.id);
+
+                // Compute the decision regardless of whether we have a pending request
+                const result: PermissionResult = response.approved
+                    ? { decision: response.decision === 'approved_for_session' ? 'approved_for_session' : 'approved' }
+                    : { decision: response.decision === 'denied' ? 'denied' : 'abort' };
+
                 if (!pending) {
-                    logger.debug(`${this.getLogPrefix()} Permission request not found or already resolved`);
+                    // The pending request was already cleared (e.g. by reset() after a turn ended
+                    // or an abort). We still need to update agentState so the mobile app sees the
+                    // resolved status instead of staying stuck on 'pending' or 'canceled'.
+                    logger.debug(`${this.getLogPrefix()} Permission request ${response.id} not in pending map, updating agentState only`);
+
+                    this.session.updateAgentState((currentState) => {
+                        const { [response.id]: pendingReq, ...remainingRequests } = currentState.requests || {};
+                        const existingCompleted = currentState.completedRequests?.[response.id];
+
+                        // Build the completed entry from whichever source is available
+                        const baseRequest = pendingReq || existingCompleted;
+                        if (!baseRequest) return currentState;
+
+                        return {
+                            ...currentState,
+                            requests: remainingRequests,
+                            completedRequests: {
+                                ...currentState.completedRequests,
+                                [response.id]: {
+                                    ...baseRequest,
+                                    completedAt: Date.now(),
+                                    status: response.approved ? 'approved' : 'denied',
+                                    decision: result.decision
+                                }
+                            }
+                        } satisfies AgentState;
+                    });
                     return;
                 }
 
@@ -86,10 +118,6 @@ export abstract class BasePermissionHandler {
                 this.pendingRequests.delete(response.id);
 
                 // Resolve the permission request
-                const result: PermissionResult = response.approved
-                    ? { decision: response.decision === 'approved_for_session' ? 'approved_for_session' : 'approved' }
-                    : { decision: response.decision === 'denied' ? 'denied' : 'abort' };
-
                 pending.resolve(result);
 
                 // Move request to completed in agent state

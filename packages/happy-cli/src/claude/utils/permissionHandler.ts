@@ -383,7 +383,37 @@ export class PermissionHandler {
             const pending = this.pendingRequests.get(id);
 
             if (!pending) {
-                logger.debug('Permission request not found or already resolved');
+                // The pending request was already cleared (e.g. by reset() after a turn ended
+                // or an abort). We still need to update agentState so the mobile app sees the
+                // resolved status instead of staying stuck on 'pending' or 'canceled'.
+                logger.debug(`Permission request ${id} not in pending map, updating agentState only`);
+
+                this.responses.set(id, { ...message, receivedAt: Date.now() });
+
+                this.session.client.updateAgentState((currentState) => {
+                    const { [id]: pendingReq, ...remainingRequests } = currentState.requests || {};
+                    const existingCompleted = currentState.completedRequests?.[id];
+
+                    // Build the completed entry from whichever source is available
+                    const baseRequest = pendingReq || existingCompleted;
+                    if (!baseRequest) return currentState;
+
+                    return {
+                        ...currentState,
+                        requests: remainingRequests,
+                        completedRequests: {
+                            ...currentState.completedRequests,
+                            [id]: {
+                                ...baseRequest,
+                                completedAt: Date.now(),
+                                status: message.approved ? 'approved' : 'denied',
+                                reason: message.reason,
+                                mode: message.mode,
+                                allowTools: message.allowTools
+                            }
+                        }
+                    };
+                });
                 return;
             }
 
