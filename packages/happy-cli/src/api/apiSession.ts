@@ -182,6 +182,18 @@ export class ApiSessionClient extends EventEmitter {
                 if (data.body.t === 'new-message') {
                     const messageSeq = data.body.message?.seq;
                     if (this.lastSeq === 0) {
+                        // Process the message directly instead of dropping it.
+                        // Previously this would silently return, relying on a
+                        // subsequent fetch that could race with the server and
+                        // miss the message entirely.
+                        if (typeof messageSeq === 'number' && data.body.message.content?.t === 'encrypted') {
+                            const body = decrypt(this.encryptionKey, this.encryptionVariant, decodeBase64(data.body.message.content.c));
+                            logger.debugLargeJson('[SOCKET] [UPDATE] Received first message (lastSeq was 0):', body);
+                            this.routeIncomingMessage(body);
+                            this.lastSeq = messageSeq;
+                        }
+                        // Also fetch to pick up any messages we may have missed
+                        // before the socket connected.
                         this.receiveSync.invalidate();
                         return;
                     }
@@ -274,6 +286,12 @@ export class ApiSessionClient extends EventEmitter {
             for (const message of messages) {
                 if (message.seq > maxSeq) {
                     maxSeq = message.seq;
+                }
+
+                // Skip messages already delivered via real-time socket events
+                // to avoid duplicate processing.
+                if (message.seq <= this.lastSeq) {
+                    continue;
                 }
 
                 if (message.content?.t !== 'encrypted') {

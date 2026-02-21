@@ -747,7 +747,38 @@ describe('ApiSessionClient v3 messages API migration', () => {
         expect(mockAxiosGet.mock.calls[0][1].params.after_seq).toBe(1);
     });
 
-    it('invalidates receive sync on first message when lastSeq is 0', async () => {
+    it('processes first message directly when lastSeq is 0 instead of dropping it', async () => {
+        const client = new ApiSessionClient('fake-token', session);
+        const onUserMessage = vi.fn();
+        client.onUserMessage(onUserMessage);
+
+        mockAxiosGet.mockResolvedValueOnce({
+            data: {
+                messages: [],
+                hasMore: false
+            }
+        });
+
+        const userMessage = {
+            role: 'user',
+            content: { type: 'text', text: 'first' }
+        };
+        emitSocketEvent('update', createNewMessageUpdate(1, encryptContent(session, userMessage)));
+
+        // The message should be delivered immediately via the real-time path
+        expect(onUserMessage).toHaveBeenCalledTimes(1);
+        expect(onUserMessage).toHaveBeenCalledWith(userMessage);
+        expect((client as any).lastSeq).toBe(1);
+
+        // A fetch should still be triggered to pick up any earlier missed messages
+        await waitForCheck(() => {
+            expect(mockAxiosGet).toHaveBeenCalledTimes(1);
+        });
+        // The fetch should use the updated lastSeq (1), not 0
+        expect(mockAxiosGet.mock.calls[0][1].params.after_seq).toBe(1);
+    });
+
+    it('buffers first message when lastSeq is 0 and onUserMessage callback is not yet registered', async () => {
         const client = new ApiSessionClient('fake-token', session);
 
         mockAxiosGet.mockResolvedValueOnce({
@@ -757,15 +788,110 @@ describe('ApiSessionClient v3 messages API migration', () => {
             }
         });
 
-        emitSocketEvent('update', createNewMessageUpdate(1, encryptContent(session, {
+        const userMessage = {
+            role: 'user',
+            content: { type: 'text', text: 'buffered-first' }
+        };
+        emitSocketEvent('update', createNewMessageUpdate(1, encryptContent(session, userMessage)));
+
+        // Message should be buffered since no callback is registered yet
+        expect((client as any).pendingMessages).toHaveLength(1);
+        expect((client as any).lastSeq).toBe(1);
+
+        // Now register the callback - buffered message should be delivered
+        const onUserMessage = vi.fn();
+        client.onUserMessage(onUserMessage);
+        expect(onUserMessage).toHaveBeenCalledTimes(1);
+        expect(onUserMessage).toHaveBeenCalledWith(userMessage);
+    });
+
+    it('does not duplicate first message when fetch also returns it', async () => {
+        const client = new ApiSessionClient('fake-token', session);
+        const onUserMessage = vi.fn();
+        client.onUserMessage(onUserMessage);
+
+        const userMessage = {
             role: 'user',
             content: { type: 'text', text: 'first' }
-        })));
+        };
 
+        // The fetch will return the same message that was already delivered via real-time
+        mockAxiosGet.mockResolvedValueOnce({
+            data: {
+                messages: [
+                    {
+                        id: 'msg-1',
+                        seq: 1,
+                        content: { t: 'encrypted', c: encryptContent(session, userMessage) },
+                        localId: null,
+                        createdAt: 1000,
+                        updatedAt: 1000
+                    }
+                ],
+                hasMore: false
+            }
+        });
+
+        // Real-time message arrives while lastSeq === 0
+        emitSocketEvent('update', createNewMessageUpdate(1, encryptContent(session, userMessage)));
+
+        // Should be delivered once via real-time
+        expect(onUserMessage).toHaveBeenCalledTimes(1);
+        expect((client as any).lastSeq).toBe(1);
+
+        // Wait for the fetch to complete - it should NOT deliver the message again
         await waitForCheck(() => {
             expect(mockAxiosGet).toHaveBeenCalledTimes(1);
         });
-        expect(mockAxiosGet.mock.calls[0][1].params.after_seq).toBe(0);
+
+        // Still only 1 delivery total
+        expect(onUserMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('still triggers fetch fallback when lastSeq is 0 and message has no valid seq', async () => {
+        const client = new ApiSessionClient('fake-token', session);
+        const onUserMessage = vi.fn();
+        client.onUserMessage(onUserMessage);
+
+        mockAxiosGet.mockResolvedValueOnce({
+            data: {
+                messages: [],
+                hasMore: false
+            }
+        });
+
+        // Send an update with missing seq
+        const updateWithNoSeq: Update = {
+            id: 'upd-no-seq',
+            seq: 1,
+            createdAt: Date.now(),
+            body: {
+                t: 'new-message',
+                sid: 'test-session-id',
+                message: {
+                    id: 'msg-no-seq',
+                    seq: undefined as any,
+                    localId: null,
+                    content: {
+                        t: 'encrypted',
+                        c: encryptContent(session, { role: 'user', content: { type: 'text', text: 'no-seq' } })
+                    },
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }
+            }
+        };
+
+        emitSocketEvent('update', updateWithNoSeq);
+
+        // Message should NOT be processed directly (no valid seq)
+        expect(onUserMessage).not.toHaveBeenCalled();
+        expect((client as any).lastSeq).toBe(0);
+
+        // But a fetch should still be triggered
+        await waitForCheck(() => {
+            expect(mockAxiosGet).toHaveBeenCalledTimes(1);
+        });
     });
 
     it('invalidates receive sync for duplicate and stale seq values', async () => {
