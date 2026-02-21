@@ -334,14 +334,14 @@ export class PermissionHandler {
     }
 
     /**
-     * Resets all state for new sessions
+     * Resets per-query state between Claude SDK query iterations.
+     * Preserves session-level state: allowedTools, allowedBashLiterals, allowedBashPrefixes, and permissionMode.
+     * These persist across queries so that "Yes, don't ask again for this tool" approvals survive
+     * mode changes, aborts, and other events that restart the query loop.
      */
-    reset(): void {
+    resetForNewQuery(): void {
         this.toolCalls = [];
         this.responses.clear();
-        this.allowedTools.clear();
-        this.allowedBashLiterals.clear();
-        this.allowedBashPrefixes.clear();
 
         // Cancel all pending requests
         for (const [, pending] of this.pendingRequests.entries()) {
@@ -360,7 +360,7 @@ export class PermissionHandler {
                     ...request,
                     completedAt: Date.now(),
                     status: 'canceled',
-                    reason: 'Session switched to local mode'
+                    reason: 'Query restarted'
                 };
             }
 
@@ -370,6 +370,18 @@ export class PermissionHandler {
                 completedRequests
             };
         });
+    }
+
+    /**
+     * Resets all state for new sessions.
+     * Clears everything including session-level allowed tools and permission mode.
+     */
+    reset(): void {
+        this.allowedTools.clear();
+        this.allowedBashLiterals.clear();
+        this.allowedBashPrefixes.clear();
+        this.permissionMode = 'default';
+        this.resetForNewQuery();
     }
 
     /**
