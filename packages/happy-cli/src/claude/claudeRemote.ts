@@ -212,6 +212,28 @@ export async function claudeRemote(opts: {
                     messages.end();
                     return;
                 }
+
+                // Parse special commands for subsequent messages (not just the initial one)
+                const subsequentCommand = parseSpecialCommand(next.message);
+                if (subsequentCommand.type === 'clear') {
+                    logger.debug('[claudeRemote] /clear command in subsequent message');
+                    if (opts.onCompletionEvent) {
+                        opts.onCompletionEvent('Context was reset');
+                    }
+                    if (opts.onSessionReset) {
+                        opts.onSessionReset();
+                    }
+                    messages.end();
+                    return;
+                }
+                if (subsequentCommand.type === 'compact') {
+                    logger.debug('[claudeRemote] /compact command in subsequent message');
+                    isCompactCommand = true;
+                    if (opts.onCompletionEvent) {
+                        opts.onCompletionEvent('Compaction started');
+                    }
+                }
+
                 mode = next.mode;
                 messages.push({ type: 'user', message: { role: 'user', content: next.message } });
             }
