@@ -304,6 +304,7 @@ export const it: TranslationStructure = {
         notConnectedToServer: 'Non connesso al server. Controlla la tua connessione Internet.',
         noMachineSelected: 'Seleziona una macchina per avviare la sessione',
         noPathSelected: 'Seleziona una directory in cui avviare la sessione',
+        resumeLastSession: 'Riprendi ultima sessione',
         sessionType: {
             title: 'Tipo di sessione',
             simple: 'Semplice',
