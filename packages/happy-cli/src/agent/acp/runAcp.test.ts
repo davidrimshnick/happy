@@ -426,6 +426,46 @@ describe('runAcp', () => {
     ]));
   });
 
+  it('handles modes with null or undefined descriptions in verbose logging', async () => {
+    mocks.backendState.startSessionMessages = [
+      {
+        type: 'event',
+        name: 'modes_update',
+        payload: {
+          availableModes: [
+            { id: 'build', name: 'build', description: null },
+            { id: 'plan', name: 'plan', description: undefined },
+            { id: 'ask', name: 'ask' },
+          ],
+          currentModeId: 'build',
+        },
+      },
+    ];
+
+    const runPromise = runAcp({
+      credentials: { token: 'token', encryption: { type: 'legacy', secret: new Uint8Array(32) } },
+      agentName: 'gemini',
+      command: 'gemini',
+      args: ['--experimental-acp'],
+      verbose: true,
+    });
+
+    await vi.waitFor(() => {
+      expect(mocks.backendState.startSessionCalls).toBe(1);
+    });
+
+    await mocks.getKillHandler()!();
+    await runPromise;
+
+    const lines = consoleLines();
+    expect(lines).toEqual(expect.arrayContaining([
+      'Outgoing modes from gemini (3), current=build:',
+      '  mode=build name=build',
+      '  mode=plan name=plan',
+      '  mode=ask name=ask',
+    ]));
+  });
+
   it('exits when backend reports terminal startup status', async () => {
     mocks.backendState.startSessionMessages = [
       { type: 'status', status: 'error', detail: 'spawn opencode ENOENT' },
