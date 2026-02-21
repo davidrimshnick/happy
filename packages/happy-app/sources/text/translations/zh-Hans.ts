@@ -301,6 +301,11 @@ export const zhHans: TranslationStructure = {
         viewAll: '查看所有会话',
     },
 
+    sessionList: {
+        showOlderSessions: ({ count }: { count: number }) => `显示 ${count} 个较旧的会话`,
+        hideOlderSessions: '隐藏较旧的会话',
+    },
+
     session: {
         inputPlaceholder: '输入消息...',
     },

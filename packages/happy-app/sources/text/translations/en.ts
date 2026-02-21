@@ -314,6 +314,11 @@ export const en: TranslationStructure = {
         viewAll: 'View all sessions',
     },
 
+    sessionList: {
+        showOlderSessions: ({ count }: { count: number }) => `Show ${count} older ${count === 1 ? 'session' : 'sessions'}`,
+        hideOlderSessions: 'Hide older sessions',
+    },
+
     session: {
         inputPlaceholder: 'Type a message ...',
     },

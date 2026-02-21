@@ -64,7 +64,8 @@ export type SessionListViewItem =
     | { type: 'header'; title: string }
     | { type: 'active-sessions'; sessions: Session[] }
     | { type: 'project-group'; displayPath: string; machine: Machine }
-    | { type: 'session'; session: Session; variant?: 'default' | 'no-path' };
+    | { type: 'session'; session: Session; variant?: 'default' | 'no-path' }
+    | { type: 'older-sessions-toggle'; count: number; expanded: boolean };
 
 // Legacy type for backward compatibility - to be removed
 export type SessionListItem = string | Session;

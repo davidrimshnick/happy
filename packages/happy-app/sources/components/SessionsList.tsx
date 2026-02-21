@@ -11,7 +11,7 @@ import { ActiveSessionsGroup } from './ActiveSessionsGroup';
 import { ActiveSessionsGroupCompact } from './ActiveSessionsGroupCompact';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSetting } from '@/sync/storage';
-import { useVisibleSessionListViewData } from '@/hooks/useVisibleSessionListViewData';
+import { useVisibleSessionListViewData, toggleOlderSessions } from '@/hooks/useVisibleSessionListViewData';
 import { Typography } from '@/constants/Typography';
 import { Session } from '@/sync/storageTypes';
 import { StatusDot } from './StatusDot';
@@ -192,6 +192,21 @@ const stylesheet = StyleSheet.create((theme) => ({
         textAlign: 'center',
         ...Typography.default('semiBold'),
     },
+    olderSessionsToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        backgroundColor: theme.colors.groupped.background,
+    },
+    olderSessionsToggleText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.colors.textSecondary,
+        marginRight: 6,
+        ...Typography.default('semiBold'),
+    },
 }));
 
 export function SessionsList() {
@@ -232,6 +247,7 @@ export function SessionsList() {
             case 'active-sessions': return 'active-sessions';
             case 'project-group': return `project-group-${item.machine.id}-${item.displayPath}-${index}`;
             case 'session': return `session-${item.session.id}`;
+            case 'older-sessions-toggle': return 'older-sessions-toggle';
         }
     }, []);
 
@@ -280,7 +296,7 @@ export function SessionsList() {
                 const nextItem = index < (dataWithSelected?.length || 0) - 1 && dataWithSelected ? dataWithSelected[index + 1] : null;
 
                 const isFirst = prevItem?.type === 'header';
-                const isLast = nextItem?.type === 'header' || nextItem == null || nextItem?.type === 'active-sessions';
+                const isLast = nextItem?.type === 'header' || nextItem == null || nextItem?.type === 'active-sessions' || nextItem?.type === 'older-sessions-toggle';
                 const isSingle = isFirst && isLast;
 
                 return (
@@ -290,6 +306,14 @@ export function SessionsList() {
                         isFirst={isFirst}
                         isLast={isLast}
                         isSingle={isSingle}
+                    />
+                );
+
+            case 'older-sessions-toggle':
+                return (
+                    <OlderSessionsToggle
+                        count={item.count}
+                        expanded={item.expanded}
                     />
                 );
         }
@@ -469,5 +493,29 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
                 {itemContent}
             </Swipeable>
         </View>
+    );
+});
+
+// Toggle component to expand/collapse older inactive sessions
+const OlderSessionsToggle = React.memo(({ count, expanded }: { count: number; expanded: boolean }) => {
+    const styles = stylesheet;
+    const { theme } = useUnistyles();
+
+    return (
+        <Pressable
+            style={styles.olderSessionsToggle}
+            onPress={toggleOlderSessions}
+        >
+            <Text style={styles.olderSessionsToggleText}>
+                {expanded
+                    ? t('sessionList.hideOlderSessions')
+                    : t('sessionList.showOlderSessions', { count })}
+            </Text>
+            <Ionicons
+                name={expanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={theme.colors.textSecondary}
+            />
+        </Pressable>
     );
 });

@@ -281,6 +281,11 @@ export const ru: TranslationStructure = {
         viewAll: 'Посмотреть все сессии',
     },
 
+    sessionList: {
+        showOlderSessions: ({ count }: { count: number }) => `Показать ${count} ${plural({ count, one: 'старую сессию', few: 'старые сессии', many: 'старых сессий' })}`,
+        hideOlderSessions: 'Скрыть старые сессии',
+    },
+
     server: {
         // Used by Server Configuration screen (app/(app)/server.tsx)
         serverConfiguration: 'Настройка сервера',
