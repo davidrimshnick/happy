@@ -10,17 +10,33 @@ export function trimIdent(text: string): string {
         lines.pop();
     }
 
+    // If no lines remain, return empty string
+    if (lines.length === 0) {
+        return '';
+    }
+
+    // Normalize tabs to spaces before calculating indentation.
+    // Mixing tabs and spaces (common when editing dist files) causes
+    // incorrect minSpaces calculation because a tab is 1 character
+    // but represents multiple columns of visual indentation.
+    // See: https://github.com/slopus/happy/issues/664
+    const normalizedLines = lines.map(line => line.replace(/\t/g, '    '));
+
     // Find the minimum number of leading spaces in non-empty lines
-    const minSpaces = lines.reduce((min, line) => {
+    const minSpaces = normalizedLines.reduce((min, line) => {
         if (line.trim() === '') {
             return min;
         }
-        const leadingSpaces = line.match(/^\s*/)![0].length;
+        const leadingSpaces = line.match(/^ */)![0].length;
         return Math.min(min, leadingSpaces);
     }, Infinity);
 
+    // If minSpaces is still Infinity (all lines were empty after trim check above,
+    // which shouldn't happen, but guard against it), treat as 0
+    const effectiveMinSpaces = minSpaces === Infinity ? 0 : minSpaces;
+
     // Remove the common leading spaces from each line
-    const trimmedLines = lines.map(line => line.slice(minSpaces));
+    const trimmedLines = normalizedLines.map(line => line.slice(effectiveMinSpaces));
 
     // Join the trimmed lines back into a single string
     return trimmedLines.join('\n');
