@@ -310,6 +310,11 @@ export const pl: TranslationStructure = {
         viewAll: 'Zobacz wszystkie sesje',
     },
 
+    sessionList: {
+        showOlderSessions: ({ count }: { count: number }) => `Pokaż ${count} ${plural({ count, one: 'starszą sesję', few: 'starsze sesje', many: 'starszych sesji' })}`,
+        hideOlderSessions: 'Ukryj starsze sesje',
+    },
+
     session: {
         inputPlaceholder: 'Wpisz wiadomość...',
     },

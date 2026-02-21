@@ -300,6 +300,11 @@ export const zhHant: TranslationStructure = {
         viewAll: '查看所有工作階段',
     },
 
+    sessionList: {
+        showOlderSessions: ({ count }: { count: number }) => `顯示 ${count} 個較舊的工作階段`,
+        hideOlderSessions: '隱藏較舊的工作階段',
+    },
+
     session: {
         inputPlaceholder: '輸入訊息...',
     },

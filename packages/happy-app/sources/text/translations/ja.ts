@@ -331,6 +331,11 @@ export const ja: TranslationStructure = {
         viewAll: 'すべてのセッションを表示',
     },
 
+    sessionList: {
+        showOlderSessions: ({ count }: { count: number }) => `${count}件の古いセッションを表示`,
+        hideOlderSessions: '古いセッションを非表示',
+    },
+
     session: {
         inputPlaceholder: 'メッセージを入力...',
     },
