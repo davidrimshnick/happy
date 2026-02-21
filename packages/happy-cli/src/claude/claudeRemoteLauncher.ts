@@ -433,7 +433,7 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
                 abortFuture?.resolve(undefined);
                 abortFuture = null;
                 logger.debug('[remote]: launch done');
-                permissionHandler.reset();
+                permissionHandler.resetForNewQuery();
                 modeHash = null;
                 mode = null;
             }
