@@ -6,6 +6,7 @@ import { log } from "@/utils/log";
 import { randomKeyNaked } from "@/utils/randomKeyNaked";
 import { allocateUserSeq } from "@/storage/seq";
 import { buildNewMachineUpdate, buildUpdateMachineUpdate } from "@/app/events/eventRouter";
+import * as privacyKit from "privacy-kit";
 
 export function machinesRoutes(app: Fastify) {
     app.post('/v1/machines', {
@@ -59,7 +60,7 @@ export function machinesRoutes(app: Fastify) {
                     metadataVersion: 1,
                     daemonState: daemonState || null,
                     daemonStateVersion: daemonState ? 1 : 0,
-                    dataEncryptionKey: dataEncryptionKey ? new Uint8Array(Buffer.from(dataEncryptionKey, 'base64')) : undefined,
+                    dataEncryptionKey: dataEncryptionKey ? privacyKit.decodeBase64(dataEncryptionKey) : undefined,
                     // Default to offline - in case the user does not start daemon
                     active: false,
                     // lastActiveAt and activeAt defaults to now() in schema
