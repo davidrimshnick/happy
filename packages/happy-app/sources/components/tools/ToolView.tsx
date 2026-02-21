@@ -273,7 +273,13 @@ const styles = StyleSheet.create((theme) => ({
         backgroundColor: theme.colors.surfaceHigh,
         borderRadius: 8,
         marginVertical: 4,
-        overflow: 'hidden'
+        // NOTE: overflow 'hidden' was removed to fix permission buttons not rendering
+        // in Chromium browsers (Chrome, Arc). The inverted FlatList applies
+        // transform: scaleY(-1) to cells, and Chromium miscalculates the clipping
+        // region when overflow: hidden is combined with ancestor CSS transforms,
+        // causing the PermissionFooter at the bottom to be clipped.
+        // Instead, borderRadius is applied directly to the header (top corners)
+        // so its background doesn't bleed outside the container's rounded corners.
     },
     header: {
         flexDirection: 'row',
@@ -281,6 +287,8 @@ const styles = StyleSheet.create((theme) => ({
         justifyContent: 'space-between',
         padding: 12,
         backgroundColor: theme.colors.surfaceHighest,
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
     },
     headerLeft: {
         flexDirection: 'row',
