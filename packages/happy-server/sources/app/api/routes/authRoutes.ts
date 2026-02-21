@@ -4,6 +4,7 @@ import * as privacyKit from "privacy-kit";
 import { db } from "@/storage/db";
 import { auth } from "@/app/auth/auth";
 import { log } from "@/utils/log";
+import { isAuthRequestExpired } from "@/utils/isAuthRequestExpired";
 
 export function authRoutes(app: Fastify) {
     app.post('/v1/auth', {
@@ -68,11 +69,26 @@ export function authRoutes(app: Fastify) {
         const publicKeyHex = privacyKit.encodeHex(publicKey);
         log({ module: 'auth-request' }, `Terminal auth request - publicKey hex: ${publicKeyHex}`);
 
-        const answer = await db.terminalAuthRequest.upsert({
-            where: { publicKey: publicKeyHex },
-            update: {},
-            create: { publicKey: publicKeyHex, supportsV2: request.body.supportsV2 ?? false }
+        // Check for existing request and handle expiry
+        const existing = await db.terminalAuthRequest.findUnique({
+            where: { publicKey: publicKeyHex }
         });
+
+        let answer;
+        if (existing && isAuthRequestExpired(existing.createdAt)) {
+            // Expired request: reset it with fresh createdAt and clear any stale response
+            answer = await db.terminalAuthRequest.update({
+                where: { id: existing.id },
+                data: { createdAt: new Date(), response: null, responseAccountId: null, supportsV2: request.body.supportsV2 ?? false }
+            });
+        } else {
+            // No existing request or still valid: upsert as before
+            answer = await db.terminalAuthRequest.upsert({
+                where: { publicKey: publicKeyHex },
+                update: {},
+                create: { publicKey: publicKeyHex, supportsV2: request.body.supportsV2 ?? false }
+            });
+        }
 
         if (answer.response && answer.responseAccountId) {
             const token = await auth.createToken(answer.responseAccountId!, { session: answer.id });
@@ -112,7 +128,7 @@ export function authRoutes(app: Fastify) {
             where: { publicKey: publicKeyHex }
         });
 
-        if (!authRequest) {
+        if (!authRequest || isAuthRequestExpired(authRequest.createdAt)) {
             return reply.send({ status: 'not_found', supportsV2: false });
         }
 
@@ -156,6 +172,10 @@ export function authRoutes(app: Fastify) {
             log({ module: 'auth-response' }, `Recent auth requests in DB: ${JSON.stringify(allRequests.map(r => ({ id: r.id, publicKey: r.publicKey.substring(0, 20) + '...', hasResponse: !!r.response })))}`);
             return reply.code(404).send({ error: 'Request not found' });
         }
+        if (isAuthRequestExpired(authRequest.createdAt)) {
+            log({ module: 'auth-response' }, `Auth request expired for publicKey: ${publicKeyHex}`);
+            return reply.code(410).send({ error: 'Request expired' });
+        }
         if (!authRequest.response) {
             await db.terminalAuthRequest.update({
                 where: { id: authRequest.id },
@@ -192,11 +212,28 @@ export function authRoutes(app: Fastify) {
             return reply.code(401).send({ error: 'Invalid public key' });
         }
 
-        const answer = await db.accountAuthRequest.upsert({
-            where: { publicKey: privacyKit.encodeHex(publicKey) },
-            update: {},
-            create: { publicKey: privacyKit.encodeHex(publicKey) }
+        const publicKeyHex = privacyKit.encodeHex(publicKey);
+
+        // Check for existing request and handle expiry
+        const existing = await db.accountAuthRequest.findUnique({
+            where: { publicKey: publicKeyHex }
         });
+
+        let answer;
+        if (existing && isAuthRequestExpired(existing.createdAt)) {
+            // Expired request: reset it with fresh createdAt and clear any stale response
+            answer = await db.accountAuthRequest.update({
+                where: { id: existing.id },
+                data: { createdAt: new Date(), response: null, responseAccountId: null }
+            });
+        } else {
+            // No existing request or still valid: upsert as before
+            answer = await db.accountAuthRequest.upsert({
+                where: { publicKey: publicKeyHex },
+                update: {},
+                create: { publicKey: publicKeyHex }
+            });
+        }
 
         if (answer.response && answer.responseAccountId) {
             const token = await auth.createToken(answer.responseAccountId!);
@@ -231,6 +268,9 @@ export function authRoutes(app: Fastify) {
         });
         if (!authRequest) {
             return reply.code(404).send({ error: 'Request not found' });
+        }
+        if (isAuthRequestExpired(authRequest.createdAt)) {
+            return reply.code(410).send({ error: 'Request expired' });
         }
         if (!authRequest.response) {
             await db.accountAuthRequest.update({
