@@ -286,8 +286,14 @@ export function query(config: {
     // Build command arguments
     const args = ['--output-format', 'stream-json', '--verbose']
 
-    if (customSystemPrompt) args.push('--system-prompt', customSystemPrompt)
-    if (appendSystemPrompt) args.push('--append-system-prompt', appendSystemPrompt)
+    if (customSystemPrompt) {
+        logDebug(`[query] --system-prompt length: ${customSystemPrompt.length}, has newlines: ${customSystemPrompt.includes('\n')}`)
+        args.push('--system-prompt', customSystemPrompt)
+    }
+    if (appendSystemPrompt) {
+        logDebug(`[query] --append-system-prompt length: ${appendSystemPrompt.length}, has newlines: ${appendSystemPrompt.includes('\n')}`)
+        args.push('--append-system-prompt', appendSystemPrompt)
+    }
     if (maxTurns) args.push('--max-turns', maxTurns.toString())
     if (model) args.push('--model', model)
     if (canCallTool) {
