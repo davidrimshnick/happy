@@ -117,6 +117,7 @@ export async function runCodex(opts: {
         machineId,
         startedBy: opts.startedBy,
         sandbox: sandboxConfig,
+        dangerouslySkipPermissions: Boolean(sandboxConfig?.enabled),
     });
     const response = await api.getOrCreateSession({ tag: sessionTag, metadata, state });
 

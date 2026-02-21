@@ -71,4 +71,49 @@ describe('createSessionMetadata', () => {
 
         expect(metadata.dangerouslySkipPermissions).toBe(true);
     });
+
+    it('propagates dangerouslySkipPermissions=true when sandbox is enabled (backend pattern)', () => {
+        // This test verifies the pattern used by Codex/Gemini/ACP backends:
+        //   dangerouslySkipPermissions: Boolean(sandboxConfig?.enabled)
+        const sandboxConfig = createSandboxConfig({ enabled: true });
+        const { metadata } = createSessionMetadata({
+            flavor: 'codex',
+            machineId: 'machine-6',
+            startedBy: 'daemon',
+            sandbox: sandboxConfig,
+            dangerouslySkipPermissions: Boolean(sandboxConfig?.enabled),
+        });
+
+        expect(metadata.dangerouslySkipPermissions).toBe(true);
+        expect(metadata.sandbox).toEqual(sandboxConfig);
+    });
+
+    it('propagates dangerouslySkipPermissions=false when sandbox is undefined (backend pattern)', () => {
+        // Simulates when sandboxConfig is undefined (e.g. noSandbox flag in Codex)
+        const sandboxConfig: SandboxConfig | undefined = undefined;
+        const { metadata } = createSessionMetadata({
+            flavor: 'codex',
+            machineId: 'machine-7',
+            startedBy: 'terminal',
+            sandbox: sandboxConfig,
+            dangerouslySkipPermissions: Boolean(sandboxConfig?.enabled),
+        });
+
+        expect(metadata.dangerouslySkipPermissions).toBe(false);
+        expect(metadata.sandbox).toBeNull();
+    });
+
+    it('propagates dangerouslySkipPermissions=false when sandbox is disabled (backend pattern)', () => {
+        const sandboxConfig = createSandboxConfig({ enabled: false });
+        const { metadata } = createSessionMetadata({
+            flavor: 'gemini',
+            machineId: 'machine-8',
+            startedBy: 'terminal',
+            sandbox: sandboxConfig,
+            dangerouslySkipPermissions: Boolean(sandboxConfig?.enabled),
+        });
+
+        expect(metadata.dangerouslySkipPermissions).toBe(false);
+        expect(metadata.sandbox).toBeNull();
+    });
 });

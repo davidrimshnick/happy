@@ -473,6 +473,7 @@ export async function runAcp(opts: {
     machineId: settings.machineId,
     startedBy: opts.startedBy,
     sandbox: settings.sandboxConfig,
+    dangerouslySkipPermissions: Boolean(settings.sandboxConfig?.enabled),
   });
   const response = await api.getOrCreateSession({ tag: sessionTag, metadata, state });
   if (response) {
