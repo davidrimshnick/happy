@@ -24,6 +24,18 @@ export const PRICING = {
         cache_write: 18.75,
         cache_read: 1.50
     },
+    'claude-opus-4-6': {
+        input: 15.0,
+        output: 75.0,
+        cache_write: 18.75,
+        cache_read: 1.50
+    },
+    'claude-sonnet-4-6': {
+        input: 3.0,
+        output: 15.0,
+        cache_write: 3.75,
+        cache_read: 0.30
+    },
     'claude-4.5-sonnet': {
         input: 3.0,
         output: 15.0,
