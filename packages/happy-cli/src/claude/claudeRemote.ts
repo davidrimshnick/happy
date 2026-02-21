@@ -2,6 +2,7 @@ import { EnhancedMode } from "./loop";
 import { query, type QueryOptions, type SDKMessage, type SDKSystemMessage, AbortError, SDKUserMessage } from '@/claude/sdk'
 import { mapToClaudeMode } from "./utils/permissionMode";
 import { claudeCheckSession } from "./utils/claudeCheckSession";
+import { claudeFindLastSession } from "./utils/claudeFindLastSession";
 import { join, resolve } from 'node:path';
 import { projectPath } from "@/projectPath";
 import { parseSpecialCommand } from "@/parsers/specialCommands";
@@ -61,13 +62,25 @@ export async function claudeRemote(opts: {
                         logger.debug(`[claudeRemote] Found --resume with session ID: ${startFrom}`);
                         break;
                     } else {
-                        // Just --resume without UUID - SDK doesn't support this
-                        logger.debug('[claudeRemote] Found --resume without session ID - not supported in remote mode');
+                        // --resume without UUID - find the last session for this directory
+                        const lastSession = claudeFindLastSession(opts.path);
+                        if (lastSession) {
+                            startFrom = lastSession;
+                            logger.debug(`[claudeRemote] Found --resume without session ID - resolved to last session: ${lastSession}`);
+                        } else {
+                            logger.debug('[claudeRemote] Found --resume without session ID - no sessions found for directory');
+                        }
                         break;
                     }
                 } else {
-                    // --resume at end of args - SDK doesn't support this
-                    logger.debug('[claudeRemote] Found --resume without session ID - not supported in remote mode');
+                    // --resume at end of args - find the last session for this directory
+                    const lastSession = claudeFindLastSession(opts.path);
+                    if (lastSession) {
+                        startFrom = lastSession;
+                        logger.debug(`[claudeRemote] Found --resume at end of args - resolved to last session: ${lastSession}`);
+                    } else {
+                        logger.debug('[claudeRemote] Found --resume at end of args - no sessions found for directory');
+                    }
                     break;
                 }
             }

@@ -185,6 +185,42 @@ export async function machineSpawnNewSession(options: SpawnSessionOptions): Prom
 }
 
 /**
+ * Session info returned by the daemon's list-claude-sessions RPC.
+ * Represents a Claude Code session file available for resuming.
+ */
+export interface ClaudeSessionInfo {
+    sessionId: string;
+    lastModified: number;
+    firstMessage: string | null;
+    summary: string | null;
+    messageCount: number;
+}
+
+/**
+ * List Claude Code sessions available for resuming in a specific directory on a machine.
+ * Scans session JSONL files and returns metadata for the session picker UI.
+ */
+export async function machineListClaudeSessions(
+    machineId: string,
+    directory: string,
+    limit: number = 20
+): Promise<{ sessions: ClaudeSessionInfo[] }> {
+    try {
+        const result = await apiSocket.machineRPC<
+            { sessions: ClaudeSessionInfo[] },
+            { directory: string; limit: number }
+        >(
+            machineId,
+            'list-claude-sessions',
+            { directory, limit }
+        );
+        return result;
+    } catch (error) {
+        return { sessions: [] };
+    }
+}
+
+/**
  * Stop the daemon on a specific machine
  */
 export async function machineStopDaemon(machineId: string): Promise<{ message: string }> {

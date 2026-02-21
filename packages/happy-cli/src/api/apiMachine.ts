@@ -11,6 +11,7 @@ import { registerCommonHandlers, SpawnSessionOptions, SpawnSessionResult } from 
 import { encodeBase64, decodeBase64, encrypt, decrypt } from './encryption';
 import { backoff } from '@/utils/time';
 import { RpcHandlerManager } from './rpc/RpcHandlerManager';
+import { claudeListSessions, ClaudeSessionInfo } from '@/claude/utils/claudeListSessions';
 
 interface ServerToDaemonEvents {
     update: (data: Update) => void;
@@ -153,6 +154,26 @@ export class ApiMachineClient {
             }, 100);
 
             return { message: 'Daemon stop request acknowledged, starting shutdown sequence...' };
+        });
+
+        // Register list-claude-sessions handler
+        // Scans Claude Code session files for a given directory and returns
+        // session metadata for display in a session picker UI
+        this.rpcHandlerManager.registerHandler<
+            { directory: string; limit?: number },
+            { sessions: ClaudeSessionInfo[] }
+        >('list-claude-sessions', (params) => {
+            const { directory, limit } = params || {};
+
+            if (!directory) {
+                throw new Error('Directory is required');
+            }
+
+            logger.debug(`[API MACHINE] Listing Claude sessions for directory: ${directory}`);
+            const sessions = claudeListSessions(directory, limit ?? 20);
+            logger.debug(`[API MACHINE] Found ${sessions.length} sessions`);
+
+            return { sessions };
         });
     }
 
