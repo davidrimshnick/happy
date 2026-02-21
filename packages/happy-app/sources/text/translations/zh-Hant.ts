@@ -276,6 +276,7 @@ export const zhHant: TranslationStructure = {
         notConnectedToServer: '未連線到伺服器。請檢查您的網路連線。',
         noMachineSelected: '請選擇一台裝置以啟動工作階段',
         noPathSelected: '請選擇一個目錄以啟動工作階段',
+        resumeLastSession: '恢復上次對話',
         sessionType: {
             title: '工作階段類型',
             simple: '簡單',

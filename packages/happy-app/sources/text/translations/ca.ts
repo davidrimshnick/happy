@@ -275,6 +275,7 @@ export const ca: TranslationStructure = {
         startNewSessionInFolder: 'Nova sessió aquí',
         noMachineSelected: 'Si us plau, selecciona una màquina per iniciar la sessió',
         noPathSelected: 'Si us plau, selecciona un directori per iniciar la sessió',
+        resumeLastSession: 'Reprendre última sessió',
         sessionType: {
             title: 'Tipus de sessió',
             simple: 'Simple',

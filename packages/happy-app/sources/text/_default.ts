@@ -274,6 +274,7 @@ export const en = {
         notConnectedToServer: 'Not connected to server. Check your internet connection.',
         noMachineSelected: 'Please select a machine to start the session',
         noPathSelected: 'Please select a directory to start the session in',
+        resumeLastSession: 'Resume last session',
         sessionType: {
             title: 'Session Type',
             simple: 'Simple',
