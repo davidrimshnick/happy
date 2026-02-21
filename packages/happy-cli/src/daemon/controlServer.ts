@@ -10,6 +10,7 @@ import { logger } from '@/ui/logger';
 import { Metadata } from '@/api/types';
 import { TrackedSession } from './types';
 import { SpawnSessionOptions, SpawnSessionResult } from '@/modules/common/registerCommonHandlers';
+import { claudeListSessions } from '@/claude/utils/claudeListSessions';
 
 export function startDaemonControlServer({
   getChildren,
@@ -166,6 +167,35 @@ export function startDaemonControlServer({
             error: result.errorMessage
           };
       }
+    });
+
+    // List Claude Code sessions available for resuming in a directory
+    typed.post('/list-claude-sessions', {
+      schema: {
+        body: z.object({
+          directory: z.string(),
+          limit: z.number().optional()
+        }),
+        response: {
+          200: z.object({
+            sessions: z.array(z.object({
+              sessionId: z.string(),
+              lastModified: z.number(),
+              firstMessage: z.string().nullable(),
+              summary: z.string().nullable(),
+              messageCount: z.number()
+            }))
+          })
+        }
+      }
+    }, async (request) => {
+      const { directory, limit } = request.body;
+
+      logger.debug(`[CONTROL SERVER] List Claude sessions request: dir=${directory}, limit=${limit || 20}`);
+      const sessions = claudeListSessions(directory, limit ?? 20);
+      logger.debug(`[CONTROL SERVER] Found ${sessions.length} Claude sessions`);
+
+      return { sessions };
     });
 
     // Stop daemon

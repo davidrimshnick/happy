@@ -84,6 +84,24 @@ export async function spawnDaemonSession(directory: string, sessionId?: string):
   return result;
 }
 
+/**
+ * List Claude Code sessions available for resuming in a specific directory.
+ * Returns session metadata (id, summary, first message, timestamps) for display
+ * in a session picker UI.
+ */
+export async function listDaemonClaudeSessions(directory: string, limit: number = 20): Promise<{
+  sessions: Array<{
+    sessionId: string;
+    lastModified: number;
+    firstMessage: string | null;
+    summary: string | null;
+    messageCount: number;
+  }>;
+}> {
+  const result = await daemonPost('/list-claude-sessions', { directory, limit });
+  return { sessions: result.sessions || [] };
+}
+
 export async function stopDaemonHttp(): Promise<void> {
   await daemonPost('/stop');
 }
